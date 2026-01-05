@@ -1,4 +1,4 @@
-package main
+package lockablemap
 
 import (
 	"encoding/json"

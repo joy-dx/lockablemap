@@ -22,7 +22,7 @@ go get github.com/joy-dx/lockablemap
 ## Quick start
 
 ```go
-package main
+package lockablemap
 
 import (
 	"encoding/json"

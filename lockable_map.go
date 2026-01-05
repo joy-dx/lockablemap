@@ -1,4 +1,4 @@
-package main
+package lockablemap
 
 import (
 	"encoding/json"
@@ -10,8 +10,8 @@ type LockableMap[T comparable, T2 any] struct {
 	mu  sync.RWMutex
 }
 
-func NewLockableMap[T comparable, T2 any]() LockableMap[T, T2] {
-	return LockableMap[T, T2]{
+func NewLockableMap[T comparable, T2 any]() *LockableMap[T, T2] {
+	return &LockableMap[T, T2]{
 		Map: make(map[T]T2),
 		mu:  sync.RWMutex{},
 	}
