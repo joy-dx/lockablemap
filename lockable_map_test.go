@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -20,6 +21,9 @@ const (
 	opGetAll
 	opGetAllSlice
 	opMarshalJSON
+	opGetKeys
+	opGetFilteredSlice
+	opGetFilteredMap
 )
 
 type step[K comparable, V any] struct {
@@ -29,9 +33,12 @@ type step[K comparable, V any] struct {
 	key   K
 	value V
 
+	filter func(K) bool
+
 	wantValue V
 	wantMap   map[K]V
 	wantSlice []V
+	wantKeys  []K
 }
 
 type caseDef[K comparable, V any] struct {
@@ -40,6 +47,22 @@ type caseDef[K comparable, V any] struct {
 }
 
 // --- Assertions/helpers ---
+
+func assertKeysMultisetEqual[K comparable](t *testing.T, got, want []K) {
+	t.Helper()
+
+	count := func(s []K) map[K]int {
+		m := make(map[K]int, len(s))
+		for _, v := range s {
+			m[v]++
+		}
+		return m
+	}
+
+	if !reflect.DeepEqual(count(got), count(want)) {
+		t.Fatalf("keys mismatch: got=%v want=%v", got, want)
+	}
+}
 
 func assertKeyNotFound[K comparable](t *testing.T, err error, wantKey K) {
 	t.Helper()
@@ -159,6 +182,44 @@ func TestLockableMap_GoldenTable_StringInt(t *testing.T) {
 				{name: "marshal json", op: opMarshalJSON},
 			},
 		},
+		{
+			name: "getkeys",
+			steps: []step[string, int]{
+				{name: "set a=1", op: opSet, key: "a", value: 1},
+				{name: "set b=2", op: opSet, key: "b", value: 2},
+				{
+					name:     "get keys",
+					op:       opGetKeys,
+					wantKeys: []string{"a", "b"},
+				},
+			},
+		},
+		{
+			name: "filtered_slice",
+			steps: []step[string, int]{
+				{name: "set apple=1", op: opSet, key: "apple", value: 1},
+				{name: "set banana=2", op: opSet, key: "banana", value: 2},
+				{
+					name:      "filter prefix a",
+					op:        opGetFilteredSlice,
+					filter:    func(k string) bool { return strings.HasPrefix(k, "a") },
+					wantSlice: []int{1},
+				},
+			},
+		},
+		{
+			name: "filtered_map",
+			steps: []step[string, int]{
+				{name: "set apple=1", op: opSet, key: "apple", value: 1},
+				{name: "set banana=2", op: opSet, key: "banana", value: 2},
+				{
+					name:    "filter prefix b",
+					op:      opGetFilteredMap,
+					filter:  func(k string) bool { return strings.HasPrefix(k, "b") },
+					wantMap: map[string]int{"banana": 2},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -235,6 +296,18 @@ func TestLockableMap_GoldenTable_StringInt(t *testing.T) {
 
 						want := lm.GetAll()
 						assertMapEqual(t, got, want)
+
+					case opGetKeys:
+						got := lm.GetKeys()
+						assertKeysMultisetEqual(t, got, st.wantKeys)
+
+					case opGetFilteredSlice:
+						got := lm.GetFilteredSlice(st.filter)
+						assertSliceMultisetEqual(t, got, st.wantSlice)
+
+					case opGetFilteredMap:
+						got := lm.GetFilteredMap(st.filter)
+						assertMapEqual(t, got, st.wantMap)
 
 					default:
 						t.Fatalf("unknown op: %v", st.op)

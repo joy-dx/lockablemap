@@ -12,6 +12,10 @@ marshaling.
 - `GetAllSlice()` returns a slice of values (order not guaranteed)
 - `MarshalJSON()` is lock-aware (safe under concurrent access)
 - A typed error for missing keys: `*KeyNotFoundError`
+- GetKeys() returns all keys (order not guaranteed)
+- Predicate-based filtering via:
+  - GetFilteredSlice(func(K) bool)
+  - GetFilteredMap(func(K) bool)
 
 ## Installation
 
@@ -52,6 +56,20 @@ func main() {
 	values := lm.GetAllSlice()
 	fmt.Println("values:", values)
 
+    keys := lm.GetKeys()
+    fmt.Println("keys:", keys)
+  
+    // Filtered reads
+    onlyA := lm.GetFilteredSlice(func(k string) bool {
+      return strings.HasPrefix(k, "a")
+    })
+    fmt.Println("filtered slice:", onlyA)
+  
+    onlyAMap := lm.GetFilteredMap(func(k string) bool {
+      return strings.HasPrefix(k, "a")
+    })
+    fmt.Println("filtered map:", onlyAMap)
+    
 	// JSON marshaling uses a read lock internally.
 	b, err := json.Marshal(&lm)
 	if err != nil {
@@ -96,6 +114,12 @@ Creates a `LockableMap` with an initialized underlying map.
     - returns a slice of values; order is unspecified
 - `MarshalJSON() ([]byte, error)`
     - marshals the underlying map with a read lock held
+- `GetKeys() []K`
+    - returns all keys; order is unspecified
+- `GetFilteredSlice(filter func(K) bool) []V`
+    - returns values where the key satisfies the predicate
+- `GetFilteredMap(filter func(K) bool) map[K]V`
+    - returns a filtered copy of the map
 
 ## Errors
 
@@ -131,6 +155,8 @@ if err != nil {
 - `GetAllSlice()` does not guarantee ordering (Go map iteration is randomized).
 - If `V` contains pointers or reference types, the wrapper does **not** provide
   deep immutability. It only protects access to the map itself.
+- Filtering methods return snapshots and are safe for concurrent use
+- Returned maps/slices are copies and do not alias internal state
 
 ## Tests and benchmarks
 

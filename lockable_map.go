@@ -63,3 +63,44 @@ func (lm *LockableMap[T, T2]) GetAllSlice() []T2 {
 	}
 	return entries
 }
+
+func (lm *LockableMap[T, T2]) GetKeys() []T {
+	lm.mu.RLock()
+	defer lm.mu.RUnlock()
+
+	keys := make([]T, 0, len(lm.Map))
+	for k := range lm.Map {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func (lm *LockableMap[T, T2]) GetFilteredSlice(
+	filter func(T) bool,
+) []T2 {
+	lm.mu.RLock()
+	defer lm.mu.RUnlock()
+
+	result := make([]T2, 0)
+	for k, v := range lm.Map {
+		if filter(k) {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+func (lm *LockableMap[T, T2]) GetFilteredMap(
+	filter func(T) bool,
+) map[T]T2 {
+	lm.mu.RLock()
+	defer lm.mu.RUnlock()
+
+	result := make(map[T]T2)
+	for k, v := range lm.Map {
+		if filter(k) {
+			result[k] = v
+		}
+	}
+	return result
+}
