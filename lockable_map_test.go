@@ -88,13 +88,6 @@ func assertKeyNotFound[K comparable](t *testing.T, err error, wantKey K) {
 	}
 }
 
-func assertMapEqual[K comparable, V any](t *testing.T, got, want map[K]V) {
-	t.Helper()
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("map mismatch:\n  got:  %#v\n  want: %#v", got, want)
-	}
-}
-
 // Map iteration order is random. GetAllSlice returns values in unspecified order,
 // so we compare as multisets by counting occurrences.
 //
