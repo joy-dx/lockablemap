@@ -123,6 +123,28 @@ if err != nil {
 }
 ```
 
+## Individual record locking
+
+`LockableMap` supports locking individual records by map key. A record lock
+prevents other callers from entering the critical section for the same key,
+while allowing operations for different keys to proceed concurrently.
+
+```go
+lm := NewLockableMap[string, User]()
+
+lm.LockRecord("user-123")
+defer lm.UnlockRecord("user-123")
+defer lm.UnlockAll()
+
+user, err := lm.Get("user-123")
+if err != nil {
+    return err
+}
+
+user.Name = "Updated name"
+lm.Set("user-123", user)
+```
+
 ## Concurrency notes / guarantees
 
 - All provided methods are safe for concurrent use.
