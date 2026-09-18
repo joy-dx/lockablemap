@@ -147,7 +147,7 @@ func TestLockableMapGoldenTable(t *testing.T) {
 			case "get keys returns all keys":
 				assertStringSet(t, lm.GetKeys(), []string{"one", "two"})
 			case "filtered operations use keys":
-				gotSlice := lm.GetFilteredSlice(func(key string) bool {
+				gotSlice := lm.GetFilteredSlice(func(key string, value testEntry) bool {
 					return len(key) >= 5 && key[:5] == "keep-"
 				})
 				assertSameEntries(t, gotSlice, []testEntry{
@@ -155,7 +155,7 @@ func TestLockableMapGoldenTable(t *testing.T) {
 					{Name: "third", Count: 3},
 				})
 
-				gotFilteredMap := lm.GetFilteredMap(func(key string) bool {
+				gotFilteredMap := lm.GetFilteredMap(func(key string, value testEntry) bool {
 					return len(key) >= 5 && key[:5] == "keep-"
 				})
 				assertMapEqual(t, gotFilteredMap, map[string]testEntry{
@@ -243,10 +243,10 @@ func TestLockableMapConcurrentAccess(t *testing.T) {
 				_ = lm.GetKeys()
 				_ = lm.GetAll()
 				_ = lm.GetAllSlice()
-				_ = lm.GetFilteredMap(func(k int) bool {
+				lm.GetFilteredMap(func(k, v int) bool {
 					return k%2 == 0
 				})
-				_ = lm.GetFilteredSlice(func(k int) bool {
+				_ = lm.GetFilteredSlice(func(k, v int) bool {
 					return k%2 == 1
 				})
 

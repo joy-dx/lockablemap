@@ -14,8 +14,8 @@ marshaling.
 - A typed error for missing keys: `*KeyNotFoundError`
 - GetKeys() returns all keys (order not guaranteed)
 - Predicate-based filtering via:
-  - GetFilteredSlice(func(K) bool)
-  - GetFilteredMap(func(K) bool)
+  - `GetFilteredSlice(func(K, V) bool)`
+  - `GetFilteredMap(func(K, V) bool)`
 
 ## Installation
 
@@ -58,15 +58,15 @@ func main() {
 
     keys := lm.GetKeys()
     fmt.Println("keys:", keys)
-  
+
     // Filtered reads
-    onlyA := lm.GetFilteredSlice(func(k string) bool {
-      return strings.HasPrefix(k, "a")
+    onlyA := lm.GetFilteredSlice(func(k string, v int) bool {
+      return strings.HasPrefix(k, "a") && v == 1
     })
     fmt.Println("filtered slice:", onlyA)
   
-    onlyAMap := lm.GetFilteredMap(func(k string) bool {
-      return strings.HasPrefix(k, "a")
+    onlyAMap := lm.GetFilteredMap(func(k string, v int) bool {
+      return strings.HasPrefix(k, "a") && v == 1
     })
     fmt.Println("filtered map:", onlyAMap)
     
@@ -116,10 +116,10 @@ Creates a `LockableMap` with an initialized underlying map.
     - marshals the underlying map with a read lock held
 - `GetKeys() []K`
     - returns all keys; order is unspecified
-- `GetFilteredSlice(filter func(K) bool) []V`
-    - returns values where the key satisfies the predicate
-- `GetFilteredMap(filter func(K) bool) map[K]V`
-    - returns a filtered copy of the map
+- `GetFilteredSlice(filter func(K, V) bool) []V`
+    - returns values where the key and value satisfy the predicate
+- `GetFilteredMap(filter func(K, V) bool) map[K]V`
+    - returns a filtered copy where the key and value satisfy the predicate
 
 ## Errors
 

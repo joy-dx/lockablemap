@@ -33,7 +33,7 @@ type step[K comparable, V any] struct {
 	key   K
 	value V
 
-	filter func(K) bool
+	filter func(K, V) bool
 
 	wantValue V
 	wantMap   map[K]V
@@ -193,9 +193,11 @@ func TestLockableMap_GoldenTable_StringInt(t *testing.T) {
 				{name: "set apple=1", op: opSet, key: "apple", value: 1},
 				{name: "set banana=2", op: opSet, key: "banana", value: 2},
 				{
-					name:      "filter prefix a",
-					op:        opGetFilteredSlice,
-					filter:    func(k string) bool { return strings.HasPrefix(k, "a") },
+					name: "filter key prefix and value",
+					op:   opGetFilteredSlice,
+					filter: func(k string, v int) bool {
+						return strings.HasPrefix(k, "a") && v == 1
+					},
 					wantSlice: []int{1},
 				},
 			},
@@ -206,9 +208,11 @@ func TestLockableMap_GoldenTable_StringInt(t *testing.T) {
 				{name: "set apple=1", op: opSet, key: "apple", value: 1},
 				{name: "set banana=2", op: opSet, key: "banana", value: 2},
 				{
-					name:    "filter prefix b",
-					op:      opGetFilteredMap,
-					filter:  func(k string) bool { return strings.HasPrefix(k, "b") },
+					name: "filter key prefix and value",
+					op:   opGetFilteredMap,
+					filter: func(k string, v int) bool {
+						return strings.HasPrefix(k, "b") && v == 2
+					},
 					wantMap: map[string]int{"banana": 2},
 				},
 			},

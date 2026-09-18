@@ -134,14 +134,14 @@ func (lm *LockableMap[T, T2]) GetKeys() []T {
 }
 
 func (lm *LockableMap[T, T2]) GetFilteredSlice(
-	filter func(T) bool,
+	filter func(T, T2) bool,
 ) []T2 {
 	lm.mu.RLock()
 	defer lm.mu.RUnlock()
 
 	result := make([]T2, 0)
 	for key, value := range lm.Map {
-		if filter(key) {
+		if filter(key, value) {
 			result = append(result, value)
 		}
 	}
@@ -150,14 +150,14 @@ func (lm *LockableMap[T, T2]) GetFilteredSlice(
 }
 
 func (lm *LockableMap[T, T2]) GetFilteredMap(
-	filter func(T) bool,
+	filter func(T, T2) bool,
 ) map[T]T2 {
 	lm.mu.RLock()
 	defer lm.mu.RUnlock()
 
 	result := make(map[T]T2)
 	for key, value := range lm.Map {
-		if filter(key) {
+		if filter(key, value) {
 			result[key] = value
 		}
 	}
