@@ -50,7 +50,7 @@ func (lock *recordLock) unlock() {
 }
 
 type LockableMap[T comparable, T2 any] struct {
-	Map map[T]T2 `json:"map" yaml:"map"`
+	data map[T]T2
 
 	mu       sync.RWMutex
 	recordMu sync.Mutex
@@ -59,7 +59,7 @@ type LockableMap[T comparable, T2 any] struct {
 
 func NewLockableMap[T comparable, T2 any]() *LockableMap[T, T2] {
 	return &LockableMap[T, T2]{
-		Map:     make(map[T]T2),
+		data:    make(map[T]T2),
 		records: make(map[T]*recordLock),
 	}
 }
@@ -68,28 +68,35 @@ func (lm *LockableMap[T, T2]) MarshalJSON() ([]byte, error) {
 	lm.mu.RLock()
 	defer lm.mu.RUnlock()
 
-	return json.Marshal(lm.Map)
+	return json.Marshal(lm.data)
+}
+
+func (lm *LockableMap[T, T2]) Len() int {
+	lm.mu.RLock()
+	defer lm.mu.RUnlock()
+
+	return len(lm.data)
 }
 
 func (lm *LockableMap[T, T2]) Set(key T, entry T2) {
 	lm.mu.Lock()
 	defer lm.mu.Unlock()
 
-	lm.Map[key] = entry
+	lm.data[key] = entry
 }
 
 func (lm *LockableMap[T, T2]) Remove(key T) {
 	lm.mu.Lock()
 	defer lm.mu.Unlock()
 
-	delete(lm.Map, key)
+	delete(lm.data, key)
 }
 
 func (lm *LockableMap[T, T2]) Get(key T) (T2, error) {
 	lm.mu.RLock()
 	defer lm.mu.RUnlock()
 
-	if value, found := lm.Map[key]; found {
+	if value, found := lm.data[key]; found {
 		return value, nil
 	}
 
@@ -101,8 +108,8 @@ func (lm *LockableMap[T, T2]) GetAll() map[T]T2 {
 	lm.mu.RLock()
 	defer lm.mu.RUnlock()
 
-	result := make(map[T]T2, len(lm.Map))
-	for key, value := range lm.Map {
+	result := make(map[T]T2, len(lm.data))
+	for key, value := range lm.data {
 		result[key] = value
 	}
 
@@ -113,8 +120,8 @@ func (lm *LockableMap[T, T2]) GetAllSlice() []T2 {
 	lm.mu.RLock()
 	defer lm.mu.RUnlock()
 
-	result := make([]T2, 0, len(lm.Map))
-	for _, value := range lm.Map {
+	result := make([]T2, 0, len(lm.data))
+	for _, value := range lm.data {
 		result = append(result, value)
 	}
 
@@ -125,8 +132,8 @@ func (lm *LockableMap[T, T2]) GetKeys() []T {
 	lm.mu.RLock()
 	defer lm.mu.RUnlock()
 
-	result := make([]T, 0, len(lm.Map))
-	for key := range lm.Map {
+	result := make([]T, 0, len(lm.data))
+	for key := range lm.data {
 		result = append(result, key)
 	}
 
@@ -140,7 +147,7 @@ func (lm *LockableMap[T, T2]) GetFilteredSlice(
 	defer lm.mu.RUnlock()
 
 	result := make([]T2, 0)
-	for key, value := range lm.Map {
+	for key, value := range lm.data {
 		if filter(key, value) {
 			result = append(result, value)
 		}
@@ -156,7 +163,7 @@ func (lm *LockableMap[T, T2]) GetFilteredMap(
 	defer lm.mu.RUnlock()
 
 	result := make(map[T]T2)
-	for key, value := range lm.Map {
+	for key, value := range lm.data {
 		if filter(key, value) {
 			result[key] = value
 		}
