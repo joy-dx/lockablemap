@@ -186,6 +186,14 @@ func (lm *LockableMap[T, T2]) getRecordLock(key T) *recordLock {
 	return lock
 }
 
+func (lm *LockableMap[T1, T2]) HasKey(key T1) bool {
+	lm.mu.RLock()
+	defer lm.mu.RUnlock()
+
+	_, found := lm.data[key]
+	return found
+}
+
 type RecordLock[T comparable, T2 any] struct {
 	lm     *LockableMap[T, T2]
 	locks  map[T]*recordLock
