@@ -92,6 +92,12 @@ func (lm *LockableMap[T, T2]) Remove(key T) {
 	delete(lm.data, key)
 }
 
+func (lm *LockableMap[T, T2]) Reset() {
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
+	lm.data = make(map[T]T2)
+}
+
 func (lm *LockableMap[T, T2]) Get(key T) (T2, error) {
 	lm.mu.RLock()
 	defer lm.mu.RUnlock()
