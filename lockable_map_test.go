@@ -24,6 +24,7 @@ const (
 	opGetKeys
 	opGetFilteredSlice
 	opGetFilteredMap
+	opSetIfAbsent
 )
 
 type step[K comparable, V any] struct {
@@ -35,10 +36,11 @@ type step[K comparable, V any] struct {
 
 	filter func(K, V) bool
 
-	wantValue V
-	wantMap   map[K]V
-	wantSlice []V
-	wantKeys  []K
+	wantValue    V
+	wantMap      map[K]V
+	wantSlice    []V
+	wantKeys     []K
+	wantInserted bool
 }
 
 type caseDef[K comparable, V any] struct {
@@ -217,6 +219,56 @@ func TestLockableMap_GoldenTable_StringInt(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "set_if_absent_inserts_and_preserves_existing",
+			steps: []step[string, int]{
+				{
+					name:         "insert a",
+					op:           opSetIfAbsent,
+					key:          "a",
+					value:        1,
+					wantInserted: true,
+				},
+				{name: "get a", op: opGetOK, key: "a", wantValue: 1},
+				{
+					name:         "do not overwrite a",
+					op:           opSetIfAbsent,
+					key:          "a",
+					value:        2,
+					wantInserted: false,
+				},
+				{name: "a remains unchanged", op: opGetOK, key: "a", wantValue: 1},
+			},
+		},
+		{
+			name: "set_if_absent_existing_zero_value",
+			steps: []step[string, int]{
+				{name: "set a to zero", op: opSet, key: "a", value: 0},
+				{
+					name:         "do not overwrite zero",
+					op:           opSetIfAbsent,
+					key:          "a",
+					value:        1,
+					wantInserted: false,
+				},
+				{name: "a remains zero", op: opGetOK, key: "a", wantValue: 0},
+			},
+		},
+		{
+			name: "set_if_absent_after_remove",
+			steps: []step[string, int]{
+				{name: "set a", op: opSet, key: "a", value: 1},
+				{name: "remove a", op: opRemove, key: "a"},
+				{
+					name:         "reinsert a",
+					op:           opSetIfAbsent,
+					key:          "a",
+					value:        2,
+					wantInserted: true,
+				},
+				{name: "get reinserted a", op: opGetOK, key: "a", wantValue: 2},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -231,6 +283,12 @@ func TestLockableMap_GoldenTable_StringInt(t *testing.T) {
 
 					case opRemove:
 						lm.Remove(st.key)
+
+					case opSetIfAbsent:
+						got := lm.SetIfAbsent(st.key, st.value)
+						if got != st.wantInserted {
+							t.Fatalf("inserted: got=%v want=%v", got, st.wantInserted)
+						}
 
 					case opGetOK:
 						got, err := lm.Get(st.key)
@@ -312,6 +370,46 @@ func TestLockableMap_GoldenTable_StringInt(t *testing.T) {
 				})
 			}
 		})
+	}
+}
+
+func TestLockableMap_SetIfAbsent_Concurrent(t *testing.T) {
+	const callers = 100
+
+	lm := NewLockableMap[string, int]()
+	start := make(chan struct{})
+	results := make(chan int, callers)
+
+	var wg sync.WaitGroup
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func(value int) {
+			defer wg.Done()
+			<-start
+			if lm.SetIfAbsent("key", value) {
+				results <- value
+			}
+		}(i)
+	}
+
+	close(start)
+	wg.Wait()
+	close(results)
+
+	var winners []int
+	for value := range results {
+		winners = append(winners, value)
+	}
+	if len(winners) != 1 {
+		t.Fatalf("successful inserts: got=%d want=1", len(winners))
+	}
+
+	got, err := lm.Get("key")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got != winners[0] {
+		t.Fatalf("stored value: got=%d want=%d", got, winners[0])
 	}
 }
 

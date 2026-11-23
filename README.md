@@ -105,6 +105,8 @@ Creates a `LockableMap` with an initialized underlying map.
 ### Methods
 
 - `Set(key K, value V)`
+- `SetIfAbsent(key T, entry T2) bool`
+    - Sets an entry if not already set. Returns true if the entry was inserted.
 - `Remove(key K)`
 - `Get(key K) (V, error)`
     - returns `*KeyNotFoundError` if the key does not exist

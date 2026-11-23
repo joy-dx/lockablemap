@@ -85,6 +85,21 @@ func (lm *LockableMap[T, T2]) Set(key T, entry T2) {
 	lm.data[key] = entry
 }
 
+func (lm *LockableMap[T, T2]) SetIfAbsent(key T, entry T2) bool {
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
+
+	if _, exists := lm.data[key]; exists {
+		return false
+	}
+
+	if lm.data == nil {
+		lm.data = make(map[T]T2)
+	}
+	lm.data[key] = entry
+	return true
+}
+
 func (lm *LockableMap[T, T2]) Remove(key T) {
 	lm.mu.Lock()
 	defer lm.mu.Unlock()
